@@ -25,6 +25,24 @@ class Grid:
                     self._set_cell(Cell(row = row_num, column = col_num))
 
 
+    @staticmethod
+    def text_to_grid(text: str) -> "Grid":
+        text = text.replace(',', '')
+        text = re.sub(r'\D+', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        text_list = text.split(' ')
+        cell_list = []
+        for i in range(len(text_list)):
+            cell_candidates = []
+            for candidate in text_list[i]:
+                cell_candidates.append(int(candidate))  # Dependent on MAGIC_NUM < 10
+            cell_row = i // c.MAGIC_NUM
+            cell_col = i % c.MAGIC_NUM
+            cell = Cell(*cell_candidates, row=cell_row, column=cell_col)
+            cell_list.append(cell)
+        return Grid(*cell_list)
+
+
     def __str__(self) -> str:
         row_divisor = '+------------------------------+------------------------------+------------------------------+'
         _temp_list = [row_divisor]
@@ -151,21 +169,3 @@ class Grid:
         self._rows[cell.row][cell.column] = cell
         self._columns[cell.column][cell.row] = cell
         self._boxes[cell.box][cell.box_cell] = cell
-
-
-    @staticmethod
-    def text_to_grid(text : str) -> "Grid":
-        text = text.replace(',', '')
-        text = re.sub(r'\D+', ' ', text)
-        text = re.sub(r'\s+', ' ', text).strip()
-        text_list = text.split(' ')
-        cell_list = []
-        for i in range(len(text_list)):
-            cell_candidates = []
-            for candidate in text_list[i]:
-                cell_candidates.append(int(candidate)) # Dependent on MAGIC_NUM < 10
-            cell_row = i // c.MAGIC_NUM
-            cell_col = i % c.MAGIC_NUM
-            cell = Cell(*cell_candidates, row = cell_row, column = cell_col)
-            cell_list.append(cell)
-        return Grid(*cell_list)
