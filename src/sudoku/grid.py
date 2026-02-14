@@ -23,8 +23,33 @@ class Grid:
                 if row[col_num] is None:
                     self._set_cell(Cell(row = row_num, column = col_num))
 
+
+    def __str__(self) -> str:
+        row_divisor = '+------------------------------+------------------------------+------------------------------+'
+        _temp_list = [row_divisor]
+        counter = 0
+        for row in self._rows:
+            counter += 1
+            row_str = '|'
+            cell_counter = 0
+            for cell in row:
+                cell_counter += 1
+                candidates = [str(x) for x in cell.candidates]
+                candidates.sort()
+                cell_str = f" {''.join(candidates):<9}"
+                row_str += cell_str
+                if cell_counter == 3:
+                    cell_counter = 0
+                    row_str += '|'
+            _temp_list.append(row_str)
+            if counter == 3:
+                counter = 0
+                _temp_list.append(row_divisor)
+        return '\n'.join(_temp_list)
+
+
     #TODO: look at converting a lot of these lists to tuples.
-    def __getitem__(self, i: int, /) -> list[Cell, ...]:
+    def __getitem__(self, i: int, /) -> list[Cell]:
         return self.row(i)
 
     def _cells(self) -> Generator[Cell, None, None]:
