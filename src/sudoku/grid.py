@@ -1,8 +1,30 @@
-from typing import Optional, Generator
+from typing import Optional, Generator, Iterable
 import re
+import functools
 
 from src.sudoku.cell import Cell
 from src.sudoku import constants as c
+
+
+def _each_division(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        for x in range(c.MAGIC_NUM):
+            for _func in {self.row, self.column, self.box}: #TODO: if don't just remove this, make that a tuple or list
+                #TODO: also, switch this. Should go by units, then numbers. Weird to do it like this tbh.
+                cells = _func(x)
+                result = func(self, *args, **kwargs, _cells = cells)
+                if result is True:
+                    return True
+        return None
+    return wrapper
+
+def _transformation(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        return self._reset_grid_state(had_changes = result)
+    return wrapper
 
 
 class Grid:
@@ -23,6 +45,15 @@ class Grid:
             for col_num in range(len(row)):
                 if row[col_num] is None:
                     self._set_cell(Cell(row = row_num, column = col_num))
+        #TODO: put basic solve after these.
+        self._basic_solve()
+        self._selected_cell = None
+        self._bi_value_cells = []
+        self._tri_value_cells = []
+        self._strong_links = None
+        self._clear_cell_collections = True
+        self._reset_cell_collections = True
+        self._reset_grid_state(had_changes = True)
 
 
     @staticmethod
@@ -169,3 +200,59 @@ class Grid:
         self._rows[cell.row][cell.column] = cell
         self._columns[cell.column][cell.row] = cell
         self._boxes[cell.box][cell.box_cell] = cell
+
+    def set_cell(self, cell: Cell) -> None:
+        self._set_cell(cell)
+        if cell.solved and not cell.previously_solved:
+            self._basic_solve()
+
+    @_each_division
+    def _basic_solve(self, _cells: Iterable[Cell] = None):
+        #TODO: fix this whole system.
+        values = set()
+        for cell in _cells:
+            if cell.solved:
+                values.add(cell.value)
+        for cell in _cells:
+            for value in values:
+                cell.remove(value)
+                self.set_cell(cell)
+
+
+    def _reset_grid_state(self, had_changes : Optional[bool] = False) -> bool:
+        #TODO: change default to none (again, trying to keep everything pretty close to how it was before)
+        if had_changes is not False:
+            for cell in self.cells():
+                if not had_changes and cell.changed:
+                    had_changes = True
+                cell.reset_changed()
+                self.set_cell(cell)
+            if had_changes:
+                self._clear_cell_collections = True
+                return True
+        return False
+
+    def _prep_cell_collections(self) -> None:
+        if self._clear_cell_collections:
+            self._bi_value_cells.clear()
+            self._tri_value_cells.clear()
+            self._strong_links = None
+            for cell in self.cells(include_solved = False):
+                cell_length = len(cell)
+                if cell_length > 3:
+                    continue
+                elif cell_length == 3:
+                    self._tri_value_cells.append(cell)
+                elif cell_length == 2:
+                    self._bi_value_cells.append(cell)
+            self._clear_cell_collections = False
+
+    @property
+    def bi_value_cells(self) -> list[Cell]:
+        self._prep_cell_collections()
+        return self._bi_value_cells.copy()
+
+    @property
+    def tri_value_cells(self) -> list[Cell]:
+        self._prep_cell_collections()
+        return self._tri_value_cells.copy()

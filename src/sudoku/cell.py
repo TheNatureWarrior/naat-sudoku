@@ -129,3 +129,6 @@ class Cell:
 
     def union(self, x : Iterable[int], /):
         return self.candidates.union(set(x))
+
+    def reset_changed(self): #TODO: get rid of this.
+        self.changed = False
