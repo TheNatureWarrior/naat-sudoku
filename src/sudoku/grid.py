@@ -48,6 +48,23 @@ class Grid:
                 _temp_list.append(row_divisor)
         return '\n'.join(_temp_list)
 
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Grid):
+            return str(self) == str(other)
+        elif isinstance(other, str):
+            if str(self) == other:
+                return True
+            else:
+                try:
+                    new_other = self.text_to_grid(other)
+                    return self.__eq__(new_other)
+                except Exception:
+                    return NotImplemented
+        else:
+            if str(self) == str(other):
+                return True
+            return NotImplemented
+
 
     #TODO: look at converting a lot of these lists to tuples.
     def __getitem__(self, i: int, /) -> list[Cell]:
