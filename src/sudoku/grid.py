@@ -257,3 +257,59 @@ class Grid:
     def tri_value_cells(self) -> list[Cell]:
         self._prep_cell_collections()
         return self._tri_value_cells.copy()
+
+    @staticmethod
+    def find_strong_link(cells : Iterable[Cell], num : int, includes : Optional[Cell] = None) -> tuple[Cell, Cell] | None:
+        cell_list = []
+        for cell in cells:
+            if num in cell:
+                if cell.solved:
+                    return None
+                else:
+                    cell_list.append(cell)
+        if len(cell_list) == 2:
+            if includes is None:
+                return cell_list[0], cell_list[1]
+            else:
+                if cell_list[0] == includes:
+                    return cell_list[0], cell_list[1]
+                elif cell_list[1] == includes:
+                    return cell_list[1], cell_list[0]
+                else:
+                    return None
+
+    def are_strongly_linked(self, a : Cell, b : Cell, value : int) -> bool:
+        if a.solved or b.solved or value not in a or value not in b:
+            return False
+        pair = {a, b}
+        for div_name in {"row", "column", "box"}:
+            if a.aligned(b, div_name):
+                for cell in self.division(div_name, a):
+                    if cell.solved:
+                        continue
+                    if value in cell:
+                        if cell in pair:
+                            continue
+                        break
+                else:
+                    return True
+        return False
+
+    @staticmethod # TODO: turn into *cells
+    def find_bi_sets(cells : Iterable[Cell]) -> Generator[list[Cell], None, None]:
+        bi_value_cells = []
+        for cell in cells:
+            if len(cell) == 2:
+                bi_value_cells.append(cell) # TODO: Would it be faster to just.. check against bi_value_cells?
+        bi_values = []
+        for cell in bi_value_cells:
+            for already_matching in bi_values:
+                if cell.candidates == already_matching[0].candidates:
+                    already_matching.append(cell)
+                    break
+            else:
+                bi_values.append(cell)
+        for matched_cell in bi_values:
+            yield matched_cell
+
+    
