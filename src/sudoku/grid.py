@@ -34,9 +34,10 @@ class Grid:
         self._boxes = []
         for x in range(c.MAGIC_NUM):
             for _list in [self._rows, self._columns, self._boxes]:
-                _list.append([])
-                for y in range(c.MAGIC_NUM):
-                    _list[x].append(Cell(row = x, column = y)) #THIs seems to be also bugged out. What?
+                _list.append([None for _ in range(c.MAGIC_NUM)])
+        for row_num in range(c.MAGIC_NUM):
+            for col_num in range(c.MAGIC_NUM):
+                self._set_cell(Cell(row = row_num, column = col_num))
         #TODO: tuples of lists instead of list of lists?
         for cell in cells:
             if not isinstance(cell, Cell):
