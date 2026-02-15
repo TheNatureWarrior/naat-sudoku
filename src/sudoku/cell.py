@@ -43,6 +43,13 @@ class Cell:
     def __hash__(self) -> int:
         return self._hash
 
+    def __repr__(self) -> str:
+        candidates = list(self.candidates)
+        candidates.sort()
+        candidates = [str(x) for x in candidates]
+        return f"R{self.row}C{self.column}Cell({', '.join(candidates)})"
+
+
     def __iter__(self):
         return iter(self._candidates)
 

@@ -29,10 +29,14 @@ def _transformation(func):
 
 class Grid:
     def __init__(self, *cells: Cell):
-        blank_unit: list[Optional[Cell]] = [None for _ in range(c.MAGIC_NUM)]
-        self._rows = [blank_unit for _ in range(c.MAGIC_NUM)]
-        self._columns = [blank_unit for _ in range(c.MAGIC_NUM)]
-        self._boxes = [blank_unit for _ in range(c.MAGIC_NUM)]
+        self._rows = []
+        self._columns = []
+        self._boxes = []
+        for x in range(c.MAGIC_NUM):
+            for _list in [self._rows, self._columns, self._boxes]:
+                _list.append([])
+                for y in range(c.MAGIC_NUM):
+                    _list[x].append(Cell(row = x, column = y)) #THIs seems to be also bugged out. What?
         #TODO: tuples of lists instead of list of lists?
         for cell in cells:
             if not isinstance(cell, Cell):
@@ -41,10 +45,6 @@ class Grid:
                 # Then convert to Cell.
                 raise TypeError(f'cell must be Cell, not {type(cell)}')
             self._set_cell(cell)
-        for row_num, row in enumerate(self._rows):
-            for col_num in range(len(row)):
-                if row[col_num] is None:
-                    self._set_cell(Cell(row = row_num, column = col_num))
         #TODO: put basic solve after these.
         self._basic_solve()
         self._selected_cell = None
