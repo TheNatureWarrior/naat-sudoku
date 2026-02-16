@@ -433,3 +433,39 @@ class Grid:
                         # Only reached if was not one of the final triple cells
                         cell.remove(final_candidates)
                         self.set_cell(cell)
+
+    @_transformation
+    def intersection_removal(self):
+        for div_name, other_divisions in {('row', ('box',)) # Box Line reduction
+                                          , ('column', ('box',)) # Box Line reduction
+                                          , ('box', ('row', 'column')) # Pointing pairs /triples
+                                          }: # TODO: refactor so constant order, and have pointing pairs go first
+            for i in range(c.MAGIC_NUM):
+                _div_cells = self.division(div_name, i)
+                _values = list([] for _ in c.VALID_CANDIDATES) #TODO
+                for cell in _div_cells:
+                    if cell.solved:
+                        _values[cell.value - 1] = None
+                    else:
+                        for val in cell.candidates:
+                            _values[val - 1].append(cell)
+                            #TODO: Make a function that does this. Have WAY too many functions that do this.
+                for j in range(c.MAGIC_NUM):
+                    candidate = j + 1
+                    cells = _values[j]
+                    if cells is None:
+                        continue
+                    if len(cells) > 3:
+                        continue
+                    for other_div in other_divisions:
+                        _which_spots = set(cell.position(other_div) for cell in cells)
+                        if len(_which_spots) != 1: # THe linked cells from div_name arent all in other_category as well.
+                            continue #So keep moving.
+                        _pos = _which_spots.pop() # All of them were in one other category, _pos.
+                        for _other_cell in self.division(other_div, _pos):
+                            for cell in cells: #TODO: FIX
+                                if cell == _other_cell:
+                                    break # Is one of the original cells, leave alone
+                            else:
+                                _other_cell.remove(candidate)
+                                self.set_cell(_other_cell)
