@@ -1,3 +1,4 @@
+import itertools
 from typing import Optional, Generator, Iterable
 import re
 import functools
@@ -312,4 +313,123 @@ class Grid:
         for matched_cell in bi_values:
             yield matched_cell
 
-    
+    @_transformation
+    @_each_division
+    def hidden_single_solve(self, _cells: Iterable[Cell] = None):
+        _counts = [0, 0, 0, 0, 0, 0, 0, 0, 0] #TODO: Fix this
+        for cell in _cells:
+            if cell.solved:
+                _counts[cell.value - 1] = None
+            else:
+                for candidate in cell:
+                    try:
+                        _counts[candidate - 1] += 1
+                    except TypeError:
+                        raise ValueError('Type error for Cell in hidden solve-- basic solve may be bugged.')
+        if 1 in _counts:
+            solved_val = _counts.index(1) + 1
+            for cell in _cells:
+                if solved_val in cell:
+                    cell.equals(solved_val)
+                    self.set_cell(cell)
+
+    @_each_division
+    @_transformation
+    def pairs_solve(self, _cells: Iterable[Cell] = None):
+        for matched_bi_values in self.find_bi_sets(_cells):
+            if len(matched_bi_values) == 2:
+                continue
+            eligible_cells = []
+            for cell in _cells:
+                if cell.solved:
+                    continue
+                if cell in matched_bi_values:
+                    continue
+                if cell.intersection(matched_bi_values[0]):
+                    eligible_cells.append(cell)
+            if eligible_cells:
+                for cell in eligible_cells:
+                    cell.remove(matched_bi_values[0].candidates)
+                    self.set_cell(cell)
+                return None #TODO: true? Also, remove _each_division
+
+    @_each_division
+    @_transformation
+    def hidden_pairs_solve(self, _cells: Iterable[Cell] = None):
+        _cells_by_candidate = [{} for _ in range(MAGIC_NUM)]
+        try:
+            for cell in _cells:
+                if cell.solved:
+                    _cells_by_candidate[cell.value - 1] = None
+                else:
+                    for candidate in cell:
+                        _cells_by_candidate[candidate - 1].add(cell)
+        except Exception:
+            print(f'Encountered error while processing {", ".join(repr(cell) for cell in _cells)}')
+            raise
+        interesting_values = []
+        for i in range(c.MAGIC_NUM):
+            _cells_w_candidate = _cells_by_candidate[i]
+            if _cells_w_candidate is None:
+                continue
+            if len(_cells_w_candidate) != 2:
+                continue
+            interesting_values.append(i)
+
+        for x, y in itertools.combinations(interesting_values, 2):
+            if _cells_by_candidate[x] != _cells_by_candidate[y]:
+                continue
+            eligible_cells = []
+            for cell in _cells_by_candidate[x]:
+                if len(cell) == 2:
+                    continue
+                eligible_cells.append(cell)
+            if not eligible_cells:
+                continue
+            for cell in eligible_cells:
+                cell.candidates = [x + 1, y + 1]
+                self.set_cell(cell)
+            return None
+
+    @_each_division
+    @_transformation
+    def triples_solve(self, _cells: Iterable[Cell] = None):
+        #TODO: refactor this, so much
+        # One thing might be making a subfunction that can be used for quads or triples.
+        eligible_cells = []
+        for cell in _cells:
+            if len(cell) in {2, 3}:
+                eligible_cells.append(cell) #TODO: fix naming and such
+        if (length:=len(eligible_cells)) >= 3:
+            final_candidates = None
+            final_cells = None
+            for i in reversed(range(length)):
+                comparison_pairs = []
+                primary_cell = eligible_cells[i]
+                primary_candidates = primary_cell.candidates
+                comp_cells = eligible_cells[:i]
+                for secondary_cell in comp_cells:
+                    secondary_candidates = secondary_cell.candidates
+                    combo = secondary_candidates.union(primary_candidates)
+                    if len(combo) == 3:
+                        for comp_cell, comp_candidates in comparison_pairs:
+                            if combo.issubset(comp_candidates):
+                                final_candidates = comp_candidates #FOUND A TRIAD
+                                final_cells = [primary_cell, secondary_cell, comp_cell] # Triad cells
+                                break #$$$
+                        else:
+                            comparison_pairs.append((secondary_cell, combo))
+                            continue
+                        break # ONly reached if break reached at line with $$$
+                else:
+                    continue
+                break # only reached if line with $$$ was reached # VE
+            if final_candidates is not None:
+                for cell in _cells:
+                    for triple_cell in final_cells:
+                        if cell == triple_cell:
+                            break # Is one of the triple cells, leave alone
+                    else:
+                        # Only reached if was not one of the final triple cells
+                        cell.remove(final_candidates)
+                        self.set_cell(cell)
