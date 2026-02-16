@@ -641,3 +641,40 @@ class Grid:
                     cell.remove(common_candidate)
                     self.set_cell(cell)
                 return None # Cells were modified, exit
+
+    @_transformation
+    def xyz_wing(self):
+        for triad in self.tri_value_cells:
+            triad_candidates = triad.candidates
+            visible_cells = self.visible_from(triad)
+            valid_bi_values = []
+            for bi in self.bi_value_cells:
+                if triad.sees(bi):
+                    if bi.candidates.issubset(triad.candidates):
+                        valid_bi_values.append(bi)
+            if len(valid_bi_values) < 2:
+                continue
+            for combo in itertools.combinations(valid_bi_values, 2):
+                cell_a, cell_b = combo
+                if cell_a.row == cell_b.row == triad.row:
+                    continue #TODO: fix this
+                if cell_a.column == cell_b.column == triad.column:
+                    continue
+                if cell_a.box == cell_b.box == triad.box:
+                    continue
+                in_common = cell_a.intersection(cell_b)
+                if len(in_common) != 1:
+                    continue
+                common_candidate = in_common.pop()
+                affected_cells = []
+                for cell in visible_cells:
+                    if common_candidate not in cell:
+                        continue
+                    if cell.sees(cell_a) and cell.sees(cell_b):
+                        affected_cells.append(cell)
+                if not affected_cells:
+                    continue
+                for cell in affected_cells:
+                    cell.remove(common_candidate)
+                    self.set_cell(cell)
+                return None
