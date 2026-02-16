@@ -469,3 +469,175 @@ class Grid:
                             else:
                                 _other_cell.remove(candidate)
                                 self.set_cell(_other_cell)
+
+    @_transformation
+    @_each_division #TODO: what?
+    def hidden_sets(self, count, _cells : Iterable[Cell] = None):
+        cells_by_candidate = [[] for _ in c.VALID_CANDIDATES]
+        for cell in _cells:
+            if cell.solved:
+                cells_by_candidate[cell.value - 1] = None
+            else:
+                for candidate in cell:
+                    cells_by_candidate[candidate - 1].append(cell)
+        uninteresting_candidates = []
+        for i in range(len(cells_by_candidate)):
+            candidate = i + 1
+            cells_with_candidates = cells_by_candidate[i]
+            if cells_with_candidates is None or len(cells_with_candidates) > count:
+                uninteresting_candidates.append(candidate)
+        interesting_candidates = set(c.VALID_CANDIDATES) - set(uninteresting_candidates)
+        for combination in itertools.combinations(interesting_candidates, count):
+            _temp_cell_holding = None
+            for candidate in combination:
+                index = candidate - 1
+                if _temp_cell_holding is None:
+                    _temp_cell_holding = []
+                for cell in cells_by_candidate[index]:
+                    _temp_cell_holding.append(cell)
+            if len(_temp_cell_holding) == count:
+                extra_candidates = c.VALID_CANDIDATES - set(combination)
+                for cell in _temp_cell_holding:
+                    cell.remove(extra_candidates)
+                    self.set_cell(cell)
+
+    @_transformation
+    def chute_remote_pairs(self):
+        for i in range(3): #TODO: SWap
+            for _div in {'chute', 'strip'}:
+                if _div == 'chute':
+                    _sub_div = 'column'
+                else:
+                    _sub_div = 'row'
+                _cells = self.division(_div, i)
+                for bi_valued_cells in self.find_bi_sets(_cells):
+                    for cell_a, cell_b in itertools.combinations(bi_valued_cells, 2):
+                        if cell_a.sees(cell_b):
+                            continue
+                        unseen_cells = []
+                        double_elimination_cells = []
+                        double_seen_cells = []
+                        for cell in _cells:
+                            if cell == cell_a or cell == cell_b:
+                                continue
+                            if cell_a.sees(cell) or cell_b.sees(cell):
+                                if cell_a.box == cell.box and cell_a.aligned(cell, _sub_div):
+                                    double_elimination_cells.append(cell)
+                                elif cell_b.box == cell.box and cell_b.aligned(cell, _sub_div):
+                                    double_elimination_cells.append(cell)
+                                elif cell_a.sees(cell) and cell_b.sees(cell):
+                                    double_seen_cells.append(cell)
+                                    double_elimination_cells.append(cell)
+                                continue
+                            unseen_cells.append(cell) #TODO: refactor this logic
+
+                        if len(unseen_cells) != 3:
+                            raise ValueError('Unseen cells should always have exactly 3.')
+                        candidate_1, candidate_2 = cell_a.candidates
+                        removals = set()
+                        for cell in unseen_cells:
+                            if candidate_1 in cell.candidates:
+                                removals.add(candidate_1)
+                            if candidate_2 in cell.candidates:
+                                removals.add(candidate_2)
+                        count_seen = len(removals)
+                        if count_seen == 2:
+                            continue
+                        elif count_seen == 1:
+                            candidate = removals.pop()
+                            eligible_cells = [_x for _x in double_seen_cells if candidate in _x and not _x.solved]
+                            if not eligible_cells:
+                                continue
+                            for cell in eligible_cells:
+                                cell.remove(candidate)
+                                self.set_cell(cell)
+                            return None #TODO: CLEAN up
+                        elif count_seen == 0:
+                            eligible_cells = [_x for _x in double_elimination_cells if not _x.solved and _x.intersection(cell_a)]
+                            if not eligible_cells:
+                                continue
+                            for cell in eligible_cells:
+                                cell.remove(cell_a.candidates)
+                                self.set_cell(cell)
+                            return None
+                        else:
+                            raise ValueError('Saw a weird number of candidates, what?')
+
+    def _rectangle_elimination(self, candidate : int = None, _cells : Iterable[Cell] = None, other_div: str = None):
+        temp = self.find_strong_link(_cells, candidate)
+        if temp is None or temp[0].box == temp[1].box: #TODO: use aligned
+            return None
+
+        for ordering in [[temp[0], temp[1]], [temp[1], temp[0]]]:
+            hinge, wing_1 = ordering
+            _wing_range = self.division(other_div, hinge)
+            for wing_2 in _wing_range:
+                if wing_2.solved:
+                    continue
+                if wing_2.box == hinge.box or wing_2.box == wing_1.box:
+                    continue
+                if candidate in wing_2:
+                    relevant_box = (wing_2.strip * 3) + wing_1.chute #TODO: make Cell static method for this sort of thing
+                    if relevant_box == hinge.box:
+                        relevant_box = (wing_1.strip * 3) + wing_2.chute
+                    box_cells = self.box(relevant_box)
+                    for box_cell in box_cells:
+                        if candidate not in box_cell:
+                            continue
+                        if wing_1.sees(box_cell) or wing_2.sees(box_cell): #TODO: Seenby
+                            continue
+                        break # Candidate existed in cell not seen by the two wings. Do nothing.
+                    else:
+                        # Candidate would go entirely missing from the relevant box if cell == candidate.
+                        wing_2.remove(candidate)
+                        self.set_cell(wing_2)
+                        return True
+
+
+    @_transformation
+    def rectangle_elimination(self):
+        for candidate in c.VALID_CANDIDATES:
+            for division, other_div in {(self.row, 'column'), (self.column, 'row')}:
+                for __i in range(c.MAGIC_NUM):
+                    _cells = division(__i)
+                    res = self._rectangle_elimination(candidate = candidate, _cells = _cells, other_div = other_div)
+                    if res is True:
+                        return True
+
+    @_transformation
+    def y_wing(self):
+        def _single_intersection(*args: Cell):
+            for _a, _b in itertools.combinations(args, 2):
+                if len(_a.intersection(_b)) != 1:
+                    return False
+            return True
+
+        for cell_a, cell_b, cell_c in itertools.combinations(self.bi_value_cells, 3):
+            candidates = cell_a.union(cell_b.union(cell_c))
+            if len(candidates) != 3:
+                continue
+            if not _single_intersection(cell_a, cell_b, cell_c):
+                continue
+            if not cell_a.sees(cell_b) and not cell_a.sees(cell_c): #TODO; fix
+                continue
+            for hinge, wing_1, wing_2 in itertools.permutations([cell_a, cell_b, cell_c]):
+                if not (hinge.sees(wing_1) and hinge.sees(wing_2)):
+                    continue
+                common_candidate = wing_1.intersection(wing_2)
+                if len(common_candidate) != 1:
+                    raise ValueError('Should be impossible to get here')
+                common_candidate = common_candidate.pop()
+                affected_cells = []
+                for cell in self.visible_from(wing_1):
+                    if common_candidate not in cell.candidates:
+                        continue
+                    if cell in [hinge, wing_2]:
+                        continue
+                    if cell.sees(wing_2):
+                        affected_cells.append(cell)
+                if not affected_cells:
+                    continue
+                for cell in affected_cells:
+                    cell.remove(common_candidate)
+                    self.set_cell(cell)
+                return None # Cells were modified, exit
