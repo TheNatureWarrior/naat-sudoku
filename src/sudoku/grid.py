@@ -60,7 +60,6 @@ class Grid:
             self._set_cell(cell)
         #TODO: put basic solve after these.
         self._basic_solve()
-        self._selected_cell = None
         self._bi_value_cells = []
         self._tri_value_cells = []
         self._strong_links = None
@@ -1142,3 +1141,65 @@ class Grid:
                                     first_cell.remove(candidate)
                                     self.set_cell(first_cell)
                                 return None
+
+    def run_round(self):
+        for cell in self.cells(include_solved = True):
+            if not cell.solved:
+                break
+        else:
+            return 'Solved.'
+        changed = self.hidden_single_solve()
+        if changed:
+            return 'Hidden single solve had changes.'
+        changed = self.pairs_solve()
+        if changed:
+            return 'Pairs solve had changes.'
+        changed = self.triples_solve()
+        if changed:
+            return 'Triples solve had changes.'
+        changed = self.intersection_removal()
+        if changed:
+            return 'Intersection removal had changes.'
+        changed = self.hidden_pairs_solve()
+        if changed:
+            return 'Hidden pairs solve had changes.'
+        changed = self.hidden_sets(3)
+        if changed:
+            return 'Hidden triples had changes.'
+        changed = self.bug_squasher()
+        if changed:
+            return 'Bug squasher had changes.'
+        changed = self.x_wing()
+        if changed:
+            return 'X wing had changes.'
+        changed = self.rectangle_elimination()
+        if changed:
+            return 'Rectangle elimination had changes.'
+        changed = self.unique_rectangles1()
+        if changed:
+            return 'Unique rectangles 1 had changes.'
+        changed = self.chute_remote_pairs()
+        if changed:
+            return 'Chute remote pairs had changes.'
+        changed = self.hidden_sets(4)
+        if changed:
+            return 'Hidden quads had changes.'
+        changed = self.swordfish()
+        if changed:
+            return 'Swordfish had changes.'
+        changed = self.y_wing()
+        if changed:
+            return 'Y wing had changes.'
+        changed = self.xyz_wing()
+        if changed:
+            return 'XYZ wing had changes.'
+        changed = self.x_cycle()
+        if changed:
+            return 'X-Cycle had changes.'
+        changed = self.xy_chain()
+        if changed:
+            return 'XY Chain had changes.'
+        changed = self.hidden_unique_rectangles1()
+        if changed:
+            return 'Hidden unique rectangles 1 had changes.'
+        return 'No changes.'
