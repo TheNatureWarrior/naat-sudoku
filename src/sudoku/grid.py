@@ -278,6 +278,7 @@ class Grid:
                     return cell_list[1], cell_list[0]
                 else:
                     return None
+        return None
 
     def are_strongly_linked(self, a : Cell, b : Cell, value : int) -> bool:
         if a.solved or b.solved or value not in a or value not in b:
@@ -379,11 +380,12 @@ class Grid:
                     cell.remove(matched_bi_values[0].candidates)
                     self.set_cell(cell)
                 return None #TODO: true? Also, remove _each_division
+        return None
 
     @_each_division
     @_transformation
     def hidden_pairs_solve(self, _cells: Iterable[Cell] = None):
-        _cells_by_candidate = [{} for _ in range(MAGIC_NUM)]
+        _cells_by_candidate = [set() for _ in range(c.MAGIC_NUM)]
         try:
             for cell in _cells:
                 if cell.solved:
@@ -417,6 +419,7 @@ class Grid:
                 cell.candidates = [x + 1, y + 1]
                 self.set_cell(cell)
             return None
+        return None
 
     @_each_division
     @_transformation
@@ -589,6 +592,7 @@ class Grid:
                             return None
                         else:
                             raise ValueError('Saw a weird number of candidates, what?')
+        return None
 
     def _rectangle_elimination(self, candidate : int = None, _cells : Iterable[Cell] = None, other_div: str = None):
         temp = self.find_strong_link(_cells, candidate)
@@ -630,6 +634,7 @@ class Grid:
                     res = self._rectangle_elimination(candidate = candidate, _cells = _cells, other_div = other_div)
                     if res is True:
                         return True
+        return None
 
     @_transformation
     def y_wing(self):
@@ -668,6 +673,7 @@ class Grid:
                     cell.remove(common_candidate)
                     self.set_cell(cell)
                 return None # Cells were modified, exit
+        return None
 
     @_transformation
     def xyz_wing(self):
@@ -705,6 +711,7 @@ class Grid:
                     cell.remove(common_candidate)
                     self.set_cell(cell)
                 return None
+        return None
 
     @_transformation
     def bug_squasher(self):
@@ -730,6 +737,7 @@ class Grid:
                 triad.candidates = {candidate}
                 self.set_cell(triad)
                 return None
+        return None
 
     @staticmethod
     def chaining(*chain_nodes : Cell, length = 1, final_cell : Cell = None, max_length = 10, cells = None):
@@ -793,6 +801,7 @@ class Grid:
                             cell.remove(_candidate)
                             self.set_cell(cell)
                     return True
+        return None
 
     @_transformation
     def xy_chain(self, _max_chain: Optional[int] = None):
@@ -827,7 +836,7 @@ class Grid:
         for fl_pair, eligible_remaining in valid_seen_bookends.items():
             first_cell, final_cell = fl_pair
             eligible_cells, remaining_cells = eligible_remaining
-            for chain in self.chaining(first_cell, final_cell = final_cell, max_length = _max_chain, cells = remaining_cells)
+            for chain in self.chaining(first_cell, final_cell = final_cell, max_length = _max_chain, cells = remaining_cells):
                 for candidate in first_cell.intersection(final_cell):
                     _eligible_cells = [x for x in eligible_cells if candidate in x and x not in chain]
                     if not _eligible_cells:
@@ -854,6 +863,7 @@ class Grid:
                         cell.remove(candidate)
                         self.set_cell(cell)
                     return None
+        return None
 
     @_transformation
     def x_wing(self):
@@ -935,6 +945,7 @@ class Grid:
                         cell.remove(_cell_list[0].candidates)
                         self.set_cell(cell)
                         return None
+        return None
 
     @_transformation
     def hidden_unique_rectangles1(self): #TODO: This one nneeds some TLC
@@ -972,3 +983,4 @@ class Grid:
                         floor2_cell.remove(other_candidate)
                         self.set_cell(floor2_cell)
                         return None # TODO: Check.. all of this.
+        return None
