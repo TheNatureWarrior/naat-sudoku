@@ -678,3 +678,29 @@ class Grid:
                     cell.remove(common_candidate)
                     self.set_cell(cell)
                 return None
+
+    @_transformation
+    def bug_squasher(self):
+        if len(self.tri_value_cells) != 1:
+            return None #BUG not applicable
+        for cell in self.cells():
+            if len(cell) > 3:
+                return None # NOt applicable
+        triad = self.tri_value_cells[0]
+        for candidate in triad:
+            for division_name in {'row', 'column', 'box'}:
+                division = self.division(division_name, triad)
+                appearances = 0
+                for cell in division:
+                    if cell == triad:
+                        continue
+                    if candidate in cell:
+                        appearances += 1
+                if appearances != 2:
+                    break
+            else:
+                # all divisions, if candidate removed, would have 2 appearances of candidate left. Squashing time
+                triad.candidates = {candidate}
+                self.set_cell(triad)
+                return None
+
