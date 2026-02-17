@@ -1,10 +1,21 @@
 import itertools
-from typing import Optional, Generator, Iterable
+from typing import Optional, Generator, Iterable, Any
 import re
 import functools
 
 from src.sudoku.cell import Cell
 from src.sudoku import constants as c
+
+
+def _table_settings(*groups : Iterable[Any]) -> Generator[tuple[Any, ...], None, None]:
+    group_orderings = (tuple(itertools.permutations(group)) for group in groups)
+    #Ex: ((('a', 'A'), ('A', 'a'), (('b', 'B'), ('B', 'b')))
+    for ordered_groups in itertools.product(*group_orderings):
+        # Ex: (('a', 'A'), ('B', 'b'))
+        for group_order in itertools.permutations(ordered_groups):
+            # Ex: (('B', 'b'), ('a', 'A'))
+            # and yields flattened version
+            yield tuple(itertools.chain.from_iterable(group_order))
 
 
 def _each_division(func):
@@ -1029,3 +1040,105 @@ class Grid:
                         print('Perfect swordfish?')
                     return None
         return None
+
+    def x_cycle(self, min_length = 5, max_length = 40, _continuous = None):
+        cells_by_candidate = [set() for _ in range(c.MAGIC_NUM)]
+        for cell in self.cells:
+            for candidate in cell:
+                cells_by_candidate[candidate].add(cell)
+        for candidate, cells in enumerate(cells_by_candidate):
+            if not cells:
+                continue
+            strong_links = self.find_strong_links(candidate, sets = True)
+            if not strong_links:
+                continue
+            linked_cells = set()
+            linked_cells.update(*strong_links)
+            _max_length = min(max_length, len(cells), len(linked_cells) + 1)
+            if _max_length < min_length:
+                continue
+            # First, continuous nice loops. Only strong links and even.
+            if _continuous is None or _continuous:
+                for cycle_length in range(min_length, _max_length + 1):
+                    if cycle_length % 2 == 1:
+                        continue
+                    for _cycle in itertools.combinations(strong_links, cycle_length // 2):
+                        cycle_set = set()
+                        cycle_set.update(*_cycle)
+                        if len(cycle_set) != cycle_length:
+                            continue
+                        for cycle in _table_settings(*_cycle):
+                            broken = False
+                            for i in range(cycle_length): # First cell is OFF. [0] OFF [1] ON [2] OFF [3] ON
+                                if i % 2:
+                                    continue # {cycle[i], cycle[i-1]} in strong_links
+                                if not cycle[i].inclusive_sees(cycle[i - 1]):
+                                    broken = True
+                                    break
+                            if broken:
+                                continue
+                            groups = [[], []]
+                            for i, ele in enumerate(cycle):
+                                groups[i % 2].append(ele)
+                            eligible_cells = cells - cycle_set
+                            eligible_cells = [x for x in eligible_cells if x.seen_by(*groups[0]) and x.seen_by(*groups[1])]
+                            if eligible_cells:
+                                for cell in eligible_cells:
+                                    cell.remove(candidate)
+                                    self.set_cell(cell)
+                                return None
+            if not _continuous:
+                for cycle_length in range(min_length, _max_length + 1):
+                    if cycle_length % 2 == 0:
+                        continue
+                    for _cycle in itertools.combinations(strong_links, (cycle_length + 1) // 2):
+                        cycle_set = set()
+                        cycle_set.update(*_cycle)
+                        if len(cycle_set) != cycle_length:
+                            continue
+                        for cycle in _table_settings(*_cycle):
+                            if cycle[0] != cycle[1]: # Keep in mind, len(cycle) == cycle_length + 1 since these two ==
+                                continue
+                            broken = False
+                            # Ex: ([0] OFF -> [1] ON) -> ([2] OFF -> [3] ON) -> ([4] OFF -> [5/-1/0] ON)
+                            for i in range(cycle_length):
+                                if i % 2:
+                                    continue
+                                if not cycle[i].inclusive_sees(cycle[i - 1]):
+                                    broken = True
+                                    break
+                            if broken:
+                                continue
+                            # [0] OFF -> [-1] == [0] ON
+                            first_cell = cycle[0]
+                            first_cell.candidates = [1]
+                            self.set_cell(first_cell)
+                            return None
+                for cycle_length in range(min_length, _max_length + 1):
+                    if cycle_length % 2 == 0:
+                        continue
+                    for _cycle in itertools.combinations(strong_links, cycle_length // 2):
+                        cycle_set = set()
+                        cycle_set.update(*_cycle)
+                        if len(cycle_set) != cycle_length - 1:
+                            continue
+                        for cycle in _table_settings(*_cycle):
+                            broken = False
+                            for i in range(cycle_length - 1):
+                                if i % 2 or i == 0:
+                                    continue
+                                if not cycle[i].inclusive_sees(cycle[i - 1]):
+                                    broken = True
+                                    break
+                            if broken:
+                                continue
+                            possible_first_cells = [x for x in cells if x not in cycle_set and x.sees(cycle[0]) and x.sees(cycle[-1])]
+                            if possible_first_cells:
+                                for first_cell in possible_first_cells:
+                                    # First cell [*] is ON ANd sees both ends
+                                    # So, in cycle of 5:
+                                    # [*] ON -> ([0] OFF -> [1] ON) -> ([2] OFF -> [3] ON)
+                                    # [3] sees [*] so implies [*] OFF.
+                                    first_cell.remove(candidate)
+                                    self.set_cell(first_cell)
+                                return None
