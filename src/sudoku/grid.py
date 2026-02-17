@@ -489,7 +489,7 @@ class Grid:
                         continue
                     for other_div in other_divisions:
                         _which_spots = set(cell.position(other_div) for cell in cells)
-                        if len(_which_spots) != 1: # THe linked cells from div_name arent all in other_category as well.
+                        if len(_which_spots) != 1: # THe linked cells from div_name aren't all in other_category as well.
                             continue #So keep moving.
                         _pos = _which_spots.pop() # All of them were in one other category, _pos.
                         for _other_cell in self.division(other_div, _pos):
@@ -615,7 +615,7 @@ class Grid:
                     for box_cell in box_cells:
                         if candidate not in box_cell:
                             continue
-                        if wing_1.sees(box_cell) or wing_2.sees(box_cell): #TODO: Seenby
+                        if wing_1.sees(box_cell) or wing_2.sees(box_cell): #TODO: Seen_by
                             continue
                         break # Candidate existed in cell not seen by the two wings. Do nothing.
                     else:
@@ -784,7 +784,7 @@ class Grid:
                             off_value = on_value
                             on_value = (cell_b.candidates - {off_value}).pop()
                         elif off_value in cell_b and self.are_strongly_linked(cell_a, cell_b, off_value):
-                            #TODO: skip link here? should be unecessary due to intersection removal
+                            #TODO: skip link here? should be unnecessary due to intersection removal
                             _cells = [x for x in remaining if off_value in x and x.inclusive_sees(cell_a) and x.inclusive_sees(cell_b)]
                             if _cells:
                                 candidate_removals.append((off_value, _cells))
@@ -874,7 +874,7 @@ class Grid:
                     link = self.find_strong_link(div(i), candidate)
                     if link is None:
                         continue
-                    #TODO: shjould skip if in same box? Isthat possible?
+                    #TODO: should skip if in same box? Is that possible?
                     cell_a, cell_b = link
                     link_pos = {cell_a.position(other_div_name), cell_b.position(other_div_name)}
                     link_info = (link_pos, (cell_a, cell_b))
@@ -894,8 +894,8 @@ class Grid:
                                     eligible_cells.append(cell)
                             if not eligible_cells:
                                 continue
-                            if len({cell_a.box, cell_b.box, cell_c.box, cell_d}) != 4:  #TODO: throughly test, then take out if impossible
-                                raise ValueError("BOXES CAN HAVE EFFECT ON X WING, CHECK XWING")
+                            if len({cell_a.box, cell_b.box, cell_c.box, cell_d}) != 4:  #TODO: thoroughly test, then take out if impossible
+                                raise ValueError("BOXES CAN HAVE EFFECT ON X WING, CHECK X WING")
                             for cell in eligible_cells:
                                 cell.remove(candidate)
                                 self.set_cell(cell)
@@ -937,10 +937,10 @@ class Grid:
                             if _cell in _cell_list:
                                 continue
                             if cell is not None:
-                                raise ValueError("Shouild be impossible, should not be two matching cells")
+                                raise ValueError("Should be impossible, should not be two matching cells")
                             cell = _cell
                     if cell is None:
-                        raise ValueError("Shouild be impossible, should be one matching cell")
+                        raise ValueError("Should be impossible, should be one matching cell")
                     if _cell_list[0].intersection(cell) == _cell_list[0].candidates:
                         cell.remove(_cell_list[0].candidates)
                         self.set_cell(cell)
@@ -948,7 +948,7 @@ class Grid:
         return None
 
     @_transformation
-    def hidden_unique_rectangles1(self): #TODO: This one nneeds some TLC
+    def hidden_unique_rectangles1(self): #TODO: This one needs some TLC
         for pair_cell in self.bi_value_cells: # ceil1_cell #TODO: refactor
             _poss_cells = self.box(pair_cell.box)
             _poss_cells.remove(pair_cell)
@@ -983,4 +983,49 @@ class Grid:
                         floor2_cell.remove(other_candidate)
                         self.set_cell(floor2_cell)
                         return None # TODO: Check.. all of this.
+        return None
+
+    @_transformation
+    def swordfish(self):
+        for candidate in c.VALID_CANDIDATES:
+            for div, other_div in (('row', 'column'), ('column', 'row')):
+                trio_tracker = []
+                for i in range(c.MAGIC_NUM):
+                    cells = self.division(div, i)
+                    cells = [x for x in cells if candidate in x]
+                    if len(cells) <= 3:
+                        trio_tracker.append(cells)
+                if len(trio_tracker) < 3:
+                    continue
+                for div_trio in itertools.combinations(trio_tracker, 3):
+                    other_div_pos = set()
+                    sword_cells = set()
+                    perfect = True
+                    i = 0
+                    for trio in div_trio:
+                        for cell in trio:
+                            i += 1
+                            other_div_pos.add(cell.position(other_div))
+                            sword_cells.add(cell)
+                            if cell.solved:
+                                perfect = False
+                            #TODO: fix?
+                    perfect = perfect and i == 9
+                    if len(other_div_pos) != 3:
+                        continue
+                    eligible_cells = []
+                    for i in other_div_pos:
+                        for cell in self.division(other_div, i):
+                            if cell in sword_cells:
+                                continue
+                            if candidate in cell:
+                                eligible_cells.append(cell)
+                    if not eligible_cells:
+                        continue
+                    for cell in eligible_cells:
+                        cell.remove(candidate)
+                        self.set_cell(cell)
+                    if perfect:
+                        print('Perfect swordfish?')
+                    return None
         return None
