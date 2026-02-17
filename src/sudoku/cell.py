@@ -71,7 +71,7 @@ class Cell:
         return {*self._candidates}
 
     @candidates.setter
-    def candidates(self, *candidates : int) -> None:
+    def candidates(self, candidates : Iterable[int]) -> None:
         if self.previously_solved:
             return
         self.previously_solved = self.solved
