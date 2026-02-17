@@ -704,3 +704,126 @@ class Grid:
                 self.set_cell(triad)
                 return None
 
+    @staticmethod
+    def chaining(*chain_nodes : Cell, length = 1, final_cell : Cell = None, max_length = 10, cells = None):
+        prior_cell = chain_nodes[-1]
+        if prior_cell == final_cell:
+            if length >= 3:
+                yield chain_nodes
+            else: #TODO: Combo
+                return
+        elif length >= max_length:
+            return
+        elif not cells:
+            return
+        else:
+            temp = [x for x in cells if x.inclusive_sees(prior_cell) and x.intersection(prior_cell)]
+            for cell in temp:
+                #TODO: add in strong/weak loop logic?
+                _cells = cells[:]
+                _cells.remove(cell)
+                yield from Grid.chaining(*chain_nodes, cell, length = length + 1, final_cell = final_cell, max_length = max_length, cells = _cells)
+
+    def _closed_xy_chain(self, max_chain, valid_bookends):
+        for fl_pair, eligible_remaining in valid_bookends.items():
+            first_cell, final_cell = fl_pair
+            eligible_cells, remaining_cells = eligible_remaining
+            for chain in self.chaining(first_cell, final_cell = final_cell, max_length = max_chain, cells = remaining_cells):
+                for candidate in first_cell.intersection(final_cell):
+                    _eligible_cells = [x for x in eligible_cells if candidate in x and x not in chain]
+                    if not _eligible_cells:
+                        continue #TODO: remove and check elsewhere? idk
+                    other_candidate = (first_cell.candidates - {candidate}).pop()
+                    on_value, off_value = other_candidate, candidate
+                    cell_b = first_cell
+                    i = 1
+                    candidate_removals = [(candidate, _eligible_cells)]
+                    remaining = [x for x in self.cells() if x not in chain]
+                    while i < len(chain):
+                        cell_a, cell_b = cell_b, chain[i]
+                        if on_value in cell_b:
+                            # Weak link between cell_a and cell_b  via on_value
+                            _cells = [x for x in remaining if on_value in x and x.inclusive_sees(cell_a) and x.inclusive_sees(cell_b)]
+                            if _cells:
+                                candidate_removals.append((on_value, _cells))
+                            off_value = on_value
+                            on_value = (cell_b.candidates - {off_value}).pop()
+                        elif off_value in cell_b and self.are_strongly_linked(cell_a, cell_b, off_value):
+                            #TODO: skip link here? should be unecessary due to intersection removal
+                            _cells = [x for x in remaining if off_value in x and x.inclusive_sees(cell_a) and x.inclusive_sees(cell_b)]
+                            if _cells:
+                                candidate_removals.append((off_value, _cells))
+                            on_value = off_value
+                            off_value = (cell_b.candidates - {on_value}).pop()
+                        else:
+                            on_value = None
+                            break
+                        i += 1
+                    if on_value is None or on_value != candidate or cell_b != final_cell:
+                        continue
+                    for _candidate, _eligible_cells in candidate_removals:
+                        for cell in eligible_cells:
+                            cell.remove(_candidate)
+                            self.set_cell(cell)
+                    return True
+
+    @_transformation
+    def xy_chain(self, _max_chain: Optional[int] = None):
+        bi_values = self.bi_value_cells
+        many_bis = len(bi_values)
+        if many_bis < 3:
+            return None
+        if _max_chain is None:
+            _max_chain = many_bis
+        else:
+            _max_chain = min(_max_chain, many_bis)
+
+        valid_bookends, valid_seen_bookends = {}, {}
+        for pair in itertools.combinations(bi_values, 2):
+            a, b = pair
+            candidate_intersection = a.intersection(b)
+            if not candidate_intersection:
+                continue
+            eligible_cells = self.visible_from(a)
+            eligible_cells = [x for x in eligible_cells if x.intersection(candidate_intersection) and b.sees(x)]
+            if not eligible_cells:
+                continue
+            remaining_cells = [x for x in bi_values if x != a]
+            if a.inclusive_sees(b):
+                valid_seen_bookends[(a, b)] = (eligible_cells, remaining_cells)
+            else:
+                valid_bookends[(a, b)] = (eligible_cells, remaining_cells)
+
+        found = self._closed_xy_chain(max_chain = _max_chain, valid_bookends = valid_seen_bookends)
+        if found:
+            return True
+        for fl_pair, eligible_remaining in valid_seen_bookends.items():
+            first_cell, final_cell = fl_pair
+            eligible_cells, remaining_cells = eligible_remaining
+            for chain in self.chaining(first_cell, final_cell = final_cell, max_length = _max_chain, cells = remaining_cells)
+                for candidate in first_cell.intersection(final_cell):
+                    _eligible_cells = [x for x in eligible_cells if candidate in x and x not in chain]
+                    if not _eligible_cells:
+                        continue
+                    other_candidate = (first_cell.candidates - {candidate}).pop()
+                    on_value, off_value = other_candidate, candidate
+                    cell_b = first_cell
+                    i = 1
+                    while i < len(chain):
+                        cell_a, cell_b = cell_b, chain[i]
+                        if on_value in cell_b:
+                            off_value = on_value
+                            on_value = (cell_b.candidates - {off_value}).pop()
+                        elif off_value in cell_b and self.are_strongly_linked(cell_a, cell_b, off_value):
+                            on_value = off_value
+                            off_value = (cell_b.candidates - {on_value}).pop()
+                        else:
+                            on_value = None
+                            break
+                        i += 1
+                    if on_value is None or on_value != candidate or cell_b != final_cell:
+                        continue
+                    for cell in _eligible_cells:
+                        cell.remove(candidate)
+                        self.set_cell(cell)
+                    return None
