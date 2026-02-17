@@ -296,6 +296,33 @@ class Grid:
                     return True
         return False
 
+    def _find_strong_links(self, candidate: int):
+        if self._strong_links is None:
+            self._strong_links = {}
+        linked_cells = []
+        for i in range(c.MAGIC_NUM):
+            for div in (self.row, self.column, self.box):
+                result = self.find_strong_link(div(i), candidate)
+                if result is None:
+                    continue
+                _a, _b = result
+                if (_a, _b) in linked_cells or (_b, _a) in linked_cells:
+                    continue #TODO: make find_strong_link return in determined order
+                linked_cells.append((_a, _b))
+        self._strong_links[candidate] = linked_cells
+
+    def find_strong_links(self, candidate: int, sets = False) -> list[tuple[Cell, Cell]] | set[frozenset]:
+        if self._strong_links is None or self._strong_links.get(candidate) is None:
+            self._find_strong_links(candidate)
+        if sets:
+            linked_cells = set()
+            for link in self._strong_links[candidate]:
+                linked_cells.add(frozenset(link))
+            return linked_cells
+        else:
+            return self._strong_links[candidate].copy()
+
+
     @staticmethod # TODO: turn into *cells
     def find_bi_sets(cells : Iterable[Cell]) -> Generator[list[Cell], None, None]:
         bi_value_cells = []
@@ -945,4 +972,3 @@ class Grid:
                         floor2_cell.remove(other_candidate)
                         self.set_cell(floor2_cell)
                         return None # TODO: Check.. all of this.
-                    
