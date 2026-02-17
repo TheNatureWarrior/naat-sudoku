@@ -827,3 +827,41 @@ class Grid:
                         cell.remove(candidate)
                         self.set_cell(cell)
                     return None
+
+    @_transformation
+    def x_wing(self):
+        for div, other_div_name in [(self.row, 'column'), (self.column, 'row')]:
+            for candidate in c.VALID_CANDIDATES:
+                links_found = []
+                for i in range(c.MAGIC_NUM):
+                    link = self.find_strong_link(div(i), candidate)
+                    if link is None:
+                        continue
+                    #TODO: shjould skip if in same box? Isthat possible?
+                    cell_a, cell_b = link
+                    link_pos = {cell_a.position(other_div_name), cell_b.position(other_div_name)}
+                    link_info = (link_pos, (cell_a, cell_b))
+                    for other_link in links_found:
+                        other_link_pos, other_cells = other_link
+                        if other_link_pos == link_pos:
+                            cell_c, cell_d = other_cells
+                            eligible_cells = []
+                            for pos in link_pos:
+                                for cell in self.division(other_div_name, pos):
+                                    if cell.solved:
+                                        continue
+                                    if candidate not in cell:
+                                        continue
+                                    if cell in (cell_a, cell_b, cell_c, cell_d):
+                                        continue
+                                    eligible_cells.append(cell)
+                            if not eligible_cells:
+                                continue
+                            if len({cell_a.box, cell_b.box, cell_c.box, cell_d}) != 4:  #TODO: throughly test, then take out if impossible
+                                raise ValueError("BOXES CAN HAVE EFFECT ON X WING, CHECK XWING")
+                            for cell in eligible_cells:
+                                cell.remove(candidate)
+                                self.set_cell(cell)
+                            return None
+                    links_found.append(link_info)
+                    
