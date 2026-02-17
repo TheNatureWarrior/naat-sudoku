@@ -864,4 +864,85 @@ class Grid:
                                 self.set_cell(cell)
                             return None
                     links_found.append(link_info)
+
+    @_transformation
+    def unique_rectangles1(self):
+        bi_values = []
+        for x in range(c.MAGIC_NUM):
+            bi_values.append([])
+            for y in range(c.MAGIC_NUM):
+                if y >= x:
+                    break
+                bi_values[x].append([])
+        for cell in self.bi_value_cells:
+            values = cell.candidates
+            a, b = values
+            if a > b:
+                bi_values[a - 1][b - 1].append(cell)
+            else:
+                bi_values[b - 1][a - 1].append(cell)
+        for first_candidate_list in bi_values:
+            for second_candidate_list in first_candidate_list:
+                for _cell_list in itertools.combinations(second_candidate_list, 3):
+                    column_set = {cell.column for cell in _cell_list}
+                    if len(column_set) != 2:
+                        continue
+                    row_set = {cell.row for cell in _cell_list}
+                    if len(row_set) != 2:
+                        continue
+                    box_set = {cell.box for cell in _cell_list}
+                    if len(box_set) != 2:
+                        continue
+                    cell = None
+                    for row in row_set:
+                        for column in column_set:
+                            _cell = self[row][column]
+                            if _cell in _cell_list:
+                                continue
+                            if cell is not None:
+                                raise ValueError("Shouild be impossible, should not be two matching cells")
+                            cell = _cell
+                    if cell is None:
+                        raise ValueError("Shouild be impossible, should be one matching cell")
+                    if _cell_list[0].intersection(cell) == _cell_list[0].candidates:
+                        cell.remove(_cell_list[0].candidates)
+                        self.set_cell(cell)
+                        return None
+
+    @_transformation
+    def hidden_unique_rectangles1(self): #TODO: This one nneeds some TLC
+        for pair_cell in self.bi_value_cells: # ceil1_cell #TODO: refactor
+            _poss_cells = self.box(pair_cell.box)
+            _poss_cells.remove(pair_cell)
+            _poss_cells = [x for x in _poss_cells if len(x.intersection(pair_cell)) == 2]
+            for ceil2_cell in _poss_cells:
+                if ceil2_cell.row == pair_cell.row:
+                    ceil_dir = 'row'
+                    wall_dir = 'column'
+                else:
+                    ceil_dir = 'column'
+                    wall_dir = 'row'
+                _poss_floor1_cells = self.division(wall_dir, pair_cell)
+                _poss_floor1_cells.remove(pair_cell)
+                _poss_floor1_cells = [x for x in _poss_floor1_cells if x.box != pair_cell.box]
+                _poss_floor1_cells = [x for x in _poss_floor1_cells if len(x.intersection(pair_cell)) == 2] #TODO: check?
+                for floor1_cell in _poss_floor1_cells:
+                    #Time to find floor2_cell
+                    # should be aligned in ceil_dir with floor1 and wall_dir with ceil2
+                    floor2_cell = self.division(ceil_dir, floor1_cell)[ceil2_cell.position(wall_dir)]
+                    if floor2_cell.box != floor1_cell.box:
+                        raise ValueError("should be in same box-- logic error in hur1")
+                    if len(floor2_cell.intersection(pair_cell)) != 2:
+                        continue
+                    for candidate in pair_cell.candidates:
+                        # Floor2 strong link with floor1 and ceil2 for this candidate
+                        if not self.are_strongly_linked(floor2_cell, floor1_cell, candidate):
+                            continue
+                        if not self.are_strongly_linked(floor2_cell, ceil2_cell, candidate):
+                            continue
+                        #Okay! Can remove other candidate from floor2_cell (catty-corner from pair_cell)
+                        other_candidate = (pair_cell.candidates - {candidate}).pop()
+                        floor2_cell.remove(other_candidate)
+                        self.set_cell(floor2_cell)
+                        return None # TODO: Check.. all of this.
                     
