@@ -72,21 +72,18 @@ class Cell:
 
     @candidates.setter
     def candidates(self, candidates : Iterable[int]) -> None:
-        if self.previously_solved:
-            return
+        if not self.solved and set(candidates) != set(self.candidates):
+            self._internal_changed = True
         self.previously_solved = self.solved
-        if not self.solved:
-            # Protection from edits on solved cells.
-            candidates = set(candidates)
-            if self.candidates != candidates:
-                self._internal_changed = True
-                self._length = None
-                candidates = list(candidates)
-                candidates.sort()
-                self._candidates = tuple(candidates)
-                if len(self) == 1:
-                    self.solved = True
-                    self.value = self._candidates[0]
+        if not self.previously_solved:
+            self.candidates = tuple(candidates)
+            self._length = None
+            if len(self) == 1:
+                self.solved = True
+                self.value = self._candidates[0]
+            else:
+                self.solved = False
+                self.value = None
 
     def remove(self, value: int | Iterable[int]) -> None: #TODO fix
         x = self.candidates
@@ -133,10 +130,18 @@ class Cell:
         return True
 
     def intersection(self, x : Iterable[int], /):
-        return self.candidates.intersection(set(x))
+        if not isinstance(x, Cell) and not isinstance(x, set):
+            raise TypeError("Input must be cell or set")
+        if isinstance(x, Cell):
+            x = x.candidates
+        return self.candidates.intersection(x)
 
-    def union(self, x : Iterable[int], /):
-        return self.candidates.union(set(x))
+    def union(self, x, /):
+        if not isinstance(x, Cell) and not isinstance(x, set):
+            raise TypeError("Input must be cell or set")
+        if isinstance(x, Cell):
+            x = x.candidates
+        return self.candidates.union(x)
 
     @property
     def changed(self) -> bool:
