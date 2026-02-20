@@ -30,7 +30,6 @@ def _each_division(func):
                 if result is True:
                     return True
         return None
-
     return wrapper
 
 
@@ -68,7 +67,6 @@ class Grid:
         self._tri_value_cells = []
         self._strong_links = None
         self._clear_cell_collections = True
-        self._reset_cell_collections = True
         self._reset_grid_state(had_changes=True)
 
     @staticmethod
@@ -368,11 +366,11 @@ class Grid:
                     cell.equals(solved_val)
                     self.set_cell(cell)
 
-    @_each_division
     @_transformation
+    @_each_division
     def pairs_solve(self, _cells: Iterable[Cell] = None):
         for matched_bi_values in self.find_bi_sets(_cells):
-            if len(matched_bi_values) == 2:
+            if len(matched_bi_values) != 2:
                 continue
             eligible_cells = []
             for cell in _cells:
@@ -1043,6 +1041,7 @@ class Grid:
                     return None
         return None
 
+    @_transformation
     def x_cycle(self, min_length = 5, max_length = 40, _continuous = None):
         cells_by_candidate = [set() for _ in range(c.MAGIC_NUM)]
         for cell in self.cells:
