@@ -343,8 +343,8 @@ class Grid:
                     break
             else:
                 bi_values.append([cell])
-        for matched_cell in bi_values:
-            yield matched_cell
+        for matched_cells in bi_values:
+            yield matched_cells
 
     @_transformation
     @_each_division
@@ -529,7 +529,8 @@ class Grid:
                 if _temp_cell_holding is None:
                     _temp_cell_holding = []
                 for cell in cells_by_candidate[index]:
-                    _temp_cell_holding.append(cell)
+                    if cell not in _temp_cell_holding:
+                        _temp_cell_holding.append(cell)
             if len(_temp_cell_holding) == count:
                 extra_candidates = c.VALID_CANDIDATES - set(combination)
                 for cell in _temp_cell_holding:
@@ -689,7 +690,7 @@ class Grid:
             valid_bi_values = []
             for bi in self.bi_value_cells:
                 if triad.sees(bi):
-                    if bi.candidates.issubset(triad.candidates):
+                    if bi.candidates.issubset(triad_candidates):
                         valid_bi_values.append(bi)
             if len(valid_bi_values) < 2:
                 continue
@@ -740,7 +741,7 @@ class Grid:
                     break
             else:
                 # all divisions, if candidate removed, would have 2 appearances of candidate left. Squashing time
-                triad.candidates = {candidate}
+                triad.equals(candidate)
                 self.set_cell(triad)
                 return None
         return None
@@ -780,7 +781,7 @@ class Grid:
                     cell_b = first_cell
                     i = 1
                     candidate_removals = [(candidate, _eligible_cells)]
-                    remaining = [x for x in self.cells() if x not in chain]
+                    remaining = [x for x in self.cells(include_solved=False) if x not in chain]
                     while i < len(chain):
                         cell_a, cell_b = cell_b, chain[i]
                         if on_value in cell_b:
@@ -806,7 +807,7 @@ class Grid:
                     if on_value is None or on_value != candidate or cell_b != final_cell:
                         continue
                     for _candidate, _eligible_cells in candidate_removals:
-                        for cell in eligible_cells:
+                        for cell in _eligible_cells:
                             cell.remove(_candidate)
                             self.set_cell(cell)
                     return True
@@ -842,7 +843,7 @@ class Grid:
         found = self._closed_xy_chain(max_chain=_max_chain, valid_bookends=valid_seen_bookends)
         if found:
             return True
-        for fl_pair, eligible_remaining in valid_seen_bookends.items():
+        for fl_pair, eligible_remaining in valid_bookends.items():
             first_cell, final_cell = fl_pair
             eligible_cells, remaining_cells = eligible_remaining
             for chain in self.chaining(first_cell, final_cell=final_cell, max_length=_max_chain, cells=remaining_cells):
@@ -963,6 +964,7 @@ class Grid:
             _poss_cells = self.box(pair_cell.box)
             _poss_cells.remove(pair_cell)
             _poss_cells = [x for x in _poss_cells if len(x.intersection(pair_cell)) == 2]
+            _poss_cells = [x for x in _poss_cells if x.row == pair_cell.row or x.column == pair_cell.column]
             for ceil2_cell in _poss_cells:
                 if ceil2_cell.row == pair_cell.row:
                     ceil_dir = 'row'
@@ -1113,7 +1115,7 @@ class Grid:
                                 continue
                             # [0] OFF -> [-1] == [0] ON
                             first_cell = cycle[0]
-                            first_cell.candidates = [1]
+                            first_cell.equals(candidate)
                             self.set_cell(first_cell)
                             return None
                 for cycle_length in range(min_length, _max_length + 1):
