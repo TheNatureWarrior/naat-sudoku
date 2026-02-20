@@ -61,13 +61,12 @@ class Grid:
                 # Then convert to Cell.
                 raise TypeError(f'cell must be Cell, not {type(cell)}')
             self._set_cell(cell)
-        # TODO: put basic solve after these.
-        self._basic_solve()
         self._bi_value_cells = []
         self._tri_value_cells = []
         self._strong_links = None
         self._clear_cell_collections = True
         self._reset_grid_state(had_changes=True)
+        self._basic_solve()
 
     @staticmethod
     def text_to_grid(text: str) -> "Grid":
@@ -1209,3 +1208,13 @@ class Grid:
         if changed:
             return 'Hidden unique rectangles 1 had changes.'
         return 'No changes.'
+
+    def solve(self, verbose = False):
+        message = ""
+        while message not in {'No changes.', 'Solved.'}:
+            message = self.run_round()
+            if verbose:
+                print(message)
+        if message != 'Solved.':
+            raise Exception('Could not solve grid.')
+
