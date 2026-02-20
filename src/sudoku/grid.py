@@ -135,7 +135,7 @@ class Grid:
             for cell in row:
                 yield cell
 
-    def cells(self, include_solved: bool = False) -> Generator[Cell, None, None]:
+    def cells(self, include_solved: bool = True) -> Generator[Cell, None, None]:
         if include_solved:
             yield from self._cells()
         else:
@@ -342,7 +342,7 @@ class Grid:
                     already_matching.append(cell)
                     break
             else:
-                bi_values.append(cell)
+                bi_values.append([cell])
         for matched_cell in bi_values:
             yield matched_cell
 
@@ -1043,8 +1043,8 @@ class Grid:
 
     @_transformation
     def x_cycle(self, min_length = 5, max_length = 40, _continuous = None):
-        cells_by_candidate = [set() for _ in range(c.MAGIC_NUM)]
-        for cell in self.cells:
+        cells_by_candidate = [set() for _ in range(c.MAGIC_NUM + 1)]
+        for cell in self.cells(include_solved= False):
             for candidate in cell:
                 cells_by_candidate[candidate].add(cell)
         for candidate, cells in enumerate(cells_by_candidate):

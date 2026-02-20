@@ -4,7 +4,6 @@ from src.sudoku import constants as c
 class Cell:
     def __init__(self, *candidates : int, row : int = None, column : int = None):
         self._length = None
-        self.changed = True
         self.solved = False
         self.previously_solved = False
             # TODO: Change how this works? IDK If I like current implementation.
@@ -39,6 +38,7 @@ class Cell:
         if len(self) == 1:
             self.solved = True
             self.value = self._candidates[0]
+        self._internal_changed = False
 
     def __hash__(self) -> int:
         return self._hash
@@ -79,7 +79,7 @@ class Cell:
             # Protection from edits on solved cells.
             candidates = set(candidates)
             if self.candidates != candidates:
-                self.changed = True
+                self._internal_changed = True
                 self._length = None
                 candidates = list(candidates)
                 candidates.sort()
@@ -88,19 +88,20 @@ class Cell:
                     self.solved = True
                     self.value = self._candidates[0]
 
-    def remove(self, *candidates) -> None:
+    def remove(self, value: int | Iterable[int]) -> None: #TODO fix
         x = self.candidates
-        for candidate in candidates:
-            x.discard(candidate)
+        if isinstance(value, int):
+            value = [value]
+        for val in value:
+            x.discard(val)
         self.candidates = x
+
+    def equals(self, value: int) -> None: #TODO: fix
+        self.candidates = [value]
 
     def sees(self, cell: "Cell") -> bool:
         #TODO: timeit
-        if self.row == cell.row:
-            if self.column == cell.column:
-                return False
-            return True
-        return self.column == cell.column and self.box == cell.box
+        return self.inclusive_sees(cell) and self != cell
 
     def inclusive_sees(self, cell: "Cell") -> bool:
         return self.row == cell.row or self.column == cell.column or self.box == cell.box
@@ -137,5 +138,9 @@ class Cell:
     def union(self, x : Iterable[int], /):
         return self.candidates.union(set(x))
 
+    @property
+    def changed(self) -> bool:
+        return self._internal_changed
+
     def reset_changed(self): #TODO: get rid of this.
-        self.changed = False
+        self._internal_changed = False
