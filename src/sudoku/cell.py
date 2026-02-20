@@ -76,7 +76,7 @@ class Cell:
             self._internal_changed = True
         self.previously_solved = self.solved
         if not self.previously_solved:
-            self.candidates = tuple(candidates)
+            self._candidates = tuple(candidates)
             self._length = None
             if len(self) == 1:
                 self.solved = True
