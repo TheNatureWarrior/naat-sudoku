@@ -2,6 +2,7 @@ import itertools
 from typing import Optional, Generator, Iterable, Any
 import re
 import functools
+import inspect
 
 from src.sudoku.cell import Cell
 from src.sudoku import constants as c
