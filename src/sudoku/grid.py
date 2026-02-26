@@ -406,29 +406,6 @@ class Grid:
     def hidden_single_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
         return self._orchestrate_transformation(self._hidden_single_solve)(cells=cells)
 
-    def _pairs_solve(self, cells: Iterable[Cell] = None) -> bool:
-        for matched_bi_values in self.find_bi_sets(cells):
-            if len(matched_bi_values) != 2:
-                continue
-            candidates = matched_bi_values[0].candidates
-            eligible_cells = []
-            for cell in cells:
-                # TODO: should this look also outside cells?
-                #   For example, if pair was aligned in box and row, should both box and row be affected?
-                if cell.solved or cell in matched_bi_values:
-                    continue
-                if cell.intersection(candidates):
-                    eligible_cells.append(cell)
-            if eligible_cells:
-                for cell in eligible_cells:
-                    cell.remove(candidates)
-                    self.set_cell(cell)
-                return True
-        return False
-
-    def pairs_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
-        return self._orchestrate_transformation(self._pairs_solve)(cells=cells)
-
     def _hidden_pairs_solve(self, cells: Iterable[Cell] = None) -> bool:
         cell_list = self.cells_by_candidate(*cells, include_solved=False)
         interesting_candidates = []
@@ -476,48 +453,14 @@ class Grid:
                 return True
         return False
 
-    @_each_division
-    @_transformation
-    def triples_solve(self, _cells: Iterable[Cell] = None):
-        # TODO: refactor this, so much
-        # One thing might be making a subfunction that can be used for quads or triples.
-        eligible_cells = []
-        for cell in _cells:
-            if len(cell) in {2, 3}:
-                eligible_cells.append(cell)  # TODO: fix naming and such
-        if (length := len(eligible_cells)) >= 3:
-            final_candidates = None
-            final_cells = None
-            for i in reversed(range(length)):
-                comparison_pairs = []
-                primary_cell = eligible_cells[i]
-                primary_candidates = primary_cell.candidates
-                comp_cells = eligible_cells[:i]
-                for secondary_cell in comp_cells:
-                    secondary_candidates = secondary_cell.candidates
-                    combo = secondary_candidates.union(primary_candidates)
-                    if len(combo) == 3:
-                        for comp_cell, comp_candidates in comparison_pairs:
-                            if combo.issubset(comp_candidates):
-                                final_candidates = comp_candidates  # FOUND A TRIAD
-                                final_cells = [primary_cell, secondary_cell, comp_cell]  # Triad cells
-                                break  # $$$
-                        else:
-                            comparison_pairs.append((secondary_cell, combo))
-                            continue
-                        break  # ONly reached if break reached at line with $$$
-                else:
-                    continue
-                break  # only reached if line with $$$ was reached # VE
-            if final_candidates is not None:
-                for cell in _cells:
-                    for triple_cell in final_cells:
-                        if cell == triple_cell:
-                            break  # Is one of the triple cells, leave alone
-                    else:
-                        # Only reached if was not one of the final triple cells
-                        cell.remove(final_candidates)
-                        self.set_cell(cell)
+    def pairs_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
+        return self._orchestrate_transformation(self._naked_sets_solve)(set_size = 2, cells=cells)
+
+    def triples_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
+        return self._orchestrate_transformation(self._naked_sets_solve)(set_size = 3, cells=cells)
+
+    def quads_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
+        return self._orchestrate_transformation(self._naked_sets_solve)(set_size = 4, cells=cells)
 
     @_transformation
     def intersection_removal(self):
@@ -1216,6 +1159,9 @@ class Grid:
         changed = self.intersection_removal()
         if changed:
             return 'Intersection removal had changes.'
+        changed = self.quads_solve()
+        if changed:
+            return 'Quads solve had changes.'
         changed = self.hidden_pairs_solve()
         if changed:
             return 'Hidden pairs solve had changes.'
