@@ -265,6 +265,17 @@ class Grid:
         return self._tri_value_cells.copy()
 
     @staticmethod
+    def cells_by_candidate(*cells: Cell, include_solved: bool = True) -> list[Optional[list[Cell]]]:
+        cell_list = [[] for _ in range(c.MAGIC_NUM)]
+        for cell in cells:
+            if cell.solved and not include_solved:
+                cell_list[cell.value - 1] = None
+            else:
+                for candidate in cell:
+                    cell_list[candidate - 1].append(cell)
+        return cell_list
+
+    @staticmethod
     def find_strong_link(cells: Iterable[Cell], num: int, includes: Optional[Cell] = None) -> tuple[Cell, Cell] | None:
         cell_list = []
         for cell in cells:
