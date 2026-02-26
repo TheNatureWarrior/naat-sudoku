@@ -356,6 +356,35 @@ class Grid:
         for matched_cells in bi_values:
             yield matched_cells
 
+    def each_division(self) -> Generator[list[Cell], None, None]:
+        for div in ('row', 'column', 'box'):
+            for pos in range(c.MAGIC_NUM):
+                yield self.division(div, pos)
+
+    def _by_division(self, func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            new_kwargs = kwargs.copy()
+            if 'cells' in new_kwargs:
+                if new_kwargs.pop('cells') is not None: # Remove and check
+                    raise ValueError('This decorator should not be used if cells is specified')
+            for cells in self.each_division():
+                result = func(*args, **new_kwargs, cells = cells)
+                if result is not None:
+                    return result
+        return wrapper
+
+    def _orchestrate_transformation(self, func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if 'cells' in inspect.signature(func).parameters and kwargs.get('cells') is None:
+                result = self._by_division(func)(*args, **kwargs)
+            else:
+                result = func(*args, **kwargs)
+            self._reset_grid_state(had_changes = result)
+            return result
+        return wrapper
+
     @_transformation
     @_each_division
     def hidden_single_solve(self, _cells: Iterable[Cell] = None):
