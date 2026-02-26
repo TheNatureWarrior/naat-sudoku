@@ -421,44 +421,29 @@ class Grid:
                 return None  # TODO: true? Also, remove _each_division
         return None
 
-    @_each_division
-    @_transformation
-    def hidden_pairs_solve(self, _cells: Iterable[Cell] = None):
-        _cells_by_candidate = [set() for _ in range(c.MAGIC_NUM)]
-        try:
-            for cell in _cells:
-                if cell.solved:
-                    _cells_by_candidate[cell.value - 1] = None
-                else:
-                    for candidate in cell:
-                        _cells_by_candidate[candidate - 1].add(cell)
-        except Exception:
-            print(f'Encountered error while processing {", ".join(repr(cell) for cell in _cells)}')
-            raise
-        interesting_values = []
-        for i in range(c.MAGIC_NUM):
-            _cells_w_candidate = _cells_by_candidate[i]
-            if _cells_w_candidate is None:
+    def _hidden_pairs_solve(self, cells: Iterable[Cell] = None):
+        cell_list = self.cells_by_candidate(*cells, include_solved=False)
+        interesting_candidates = []
+        for i, _cells in enumerate(cell_list):
+            candidate = i + 1
+            if _cells is None or len(_cells) != 2:
                 continue
-            if len(_cells_w_candidate) != 2:
+            if all(len(cell) == 2 for cell in _cells):
+                continue # Naked pair
+            interesting_candidates.append(candidate)
+        for x, y in itertools.combinations(interesting_candidates, 2):
+            if set(cell_list[x - 1]) != set(cell_list[y - 1]):
                 continue
-            interesting_values.append(i)
-
-        for x, y in itertools.combinations(interesting_values, 2):
-            if _cells_by_candidate[x] != _cells_by_candidate[y]:
-                continue
-            eligible_cells = []
-            for cell in _cells_by_candidate[x]:
-                if len(cell) == 2:
-                    continue
-                eligible_cells.append(cell)
+            eligible_cells = [x for x in cell_list[x-1] if len(x) != 2]
             if not eligible_cells:
-                continue
+                raise ValueError('Unexpected-- no eligible cells yet already screened out naked pairs')
             for cell in eligible_cells:
-                cell.candidates = [x + 1, y + 1]
+                cell.candidates = [x, y]
                 self.set_cell(cell)
-            return None
-        return None
+            return True
+
+    def hidden_pairs_solve(self, cells: Optional[Iterable[Cell]] = None):
+        return self._orchestrate_transformation(self._hidden_pairs_solve)(cells=cells)
 
     @_each_division
     @_transformation
