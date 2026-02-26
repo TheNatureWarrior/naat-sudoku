@@ -371,8 +371,9 @@ class Grid:
                     raise ValueError('This decorator should not be used if cells is specified')
             for cells in self.each_division():
                 result = func(*args, **new_kwargs, cells = cells)
-                if result is not None:
+                if result:
                     return result
+            return False
         return wrapper
 
     def _orchestrate_transformation(self, func):
@@ -386,7 +387,7 @@ class Grid:
             return result
         return wrapper
 
-    def _hidden_single_solve(self, cells: Iterable[Cell] = None):
+    def _hidden_single_solve(self, cells: Iterable[Cell] = None) -> bool:
         cell_list = self.cells_by_candidate(*cells, include_solved=False)
         for i, _cells in enumerate(cell_list):
             if _cells is None or len(_cells) != 1:
@@ -396,32 +397,33 @@ class Grid:
             cell.equals(candidate)
             self.set_cell(cell)
             return True
+        return False
 
-    def hidden_single_solve(self, cells: Optional[Iterable[Cell]] = None):
+    def hidden_single_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
         return self._orchestrate_transformation(self._hidden_single_solve)(cells=cells)
 
-    @_transformation
-    @_each_division
-    def pairs_solve(self, _cells: Iterable[Cell] = None):
-        for matched_bi_values in self.find_bi_sets(_cells):
+    def _pairs_solve(self, cells: Iterable[Cell] = None) -> bool:
+        for matched_bi_values in self.find_bi_sets(cells):
             if len(matched_bi_values) != 2:
                 continue
+            candidates = matched_bi_values[0].candidates
             eligible_cells = []
-            for cell in _cells:
-                if cell.solved:
+            for cell in cells:
+                if cell.solved or cell in matched_bi_values:
                     continue
-                if cell in matched_bi_values:
-                    continue
-                if cell.intersection(matched_bi_values[0]):
+                if cell.intersection(candidates):
                     eligible_cells.append(cell)
             if eligible_cells:
                 for cell in eligible_cells:
-                    cell.remove(matched_bi_values[0].candidates)
+                    cell.remove(candidates)
                     self.set_cell(cell)
-                return None  # TODO: true? Also, remove _each_division
-        return None
+                return True
+        return False
 
-    def _hidden_pairs_solve(self, cells: Iterable[Cell] = None):
+    def pairs_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
+        return self._orchestrate_transformation(self._pairs_solve)(cells=cells)
+
+    def _hidden_pairs_solve(self, cells: Iterable[Cell] = None) -> bool:
         cell_list = self.cells_by_candidate(*cells, include_solved=False)
         interesting_candidates = []
         for i, _cells in enumerate(cell_list):
@@ -441,8 +443,9 @@ class Grid:
                 cell.candidates = [x, y]
                 self.set_cell(cell)
             return True
+        return False
 
-    def hidden_pairs_solve(self, cells: Optional[Iterable[Cell]] = None):
+    def hidden_pairs_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
         return self._orchestrate_transformation(self._hidden_pairs_solve)(cells=cells)
 
     @_each_division
