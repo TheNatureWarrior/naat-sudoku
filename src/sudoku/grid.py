@@ -168,7 +168,9 @@ class Grid:
         cells.extend(self.column(start + 2))
         return cells
 
-    def visible_from(self, cell: Cell, include_solved = False) -> list[Cell]:
+    def visible_from(self, *cells: Cell, include_solved = False) -> list[Cell]:
+        cell = cells[-1]
+        cells = cells[:-1]
         seen_cells = []
         row = cell.row
         column = cell.column
@@ -186,6 +188,8 @@ class Grid:
             seen_cells.append(_cell)
         if not include_solved:
             seen_cells = [x for x in seen_cells if not x.solved]
+        for _cell in cells:
+            seen_cells = [x for x in seen_cells if _cell.sees(x)]
         return seen_cells
 
     def division(self, division: str, position: int | Cell):
@@ -409,6 +413,8 @@ class Grid:
             candidates = matched_bi_values[0].candidates
             eligible_cells = []
             for cell in cells:
+                # TODO: should this look also outside cells?
+                #   For example, if pair was aligned in box and row, should both box and row be affected?
                 if cell.solved or cell in matched_bi_values:
                     continue
                 if cell.intersection(candidates):
@@ -447,6 +453,28 @@ class Grid:
 
     def hidden_pairs_solve(self, cells: Optional[Iterable[Cell]] = None) -> bool:
         return self._orchestrate_transformation(self._hidden_pairs_solve)(cells=cells)
+
+    def _naked_sets_solve(self, set_size : int, cells: Iterable[Cell] = None) -> bool:
+        interesting_cells = []
+        for cell in cells:
+            if cell.solved:
+                continue
+            if len(cell) > set_size:
+                continue
+            interesting_cells.append(cell)
+        for cell_combo in itertools.combinations(interesting_cells, set_size):
+            candidate_set = set()
+            for cell in cell_combo:
+                candidate_set.update(cell.candidates)
+            if len(candidate_set) != set_size:
+                continue
+            eligible_cells = [x for x in self.visible_from(*cell_combo) if x.intersection(candidate_set)]
+            if eligible_cells:
+                for cell in eligible_cells:
+                    cell.remove(candidate_set)
+                    self.set_cell(cell)
+                return True
+        return False
 
     @_each_division
     @_transformation
