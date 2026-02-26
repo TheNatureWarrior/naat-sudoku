@@ -386,25 +386,19 @@ class Grid:
             return result
         return wrapper
 
-    @_transformation
-    @_each_division
-    def hidden_single_solve(self, _cells: Iterable[Cell] = None):
-        _counts = [0, 0, 0, 0, 0, 0, 0, 0, 0]  # TODO: Fix this
-        for cell in _cells:
-            if cell.solved:
-                _counts[cell.value - 1] = None
-            else:
-                for candidate in cell:
-                    try:
-                        _counts[candidate - 1] += 1
-                    except TypeError:
-                        raise ValueError('Type error for Cell in hidden solve-- basic solve may be bugged.')
-        if 1 in _counts:
-            solved_val = _counts.index(1) + 1
-            for cell in _cells:
-                if solved_val in cell:
-                    cell.equals(solved_val)
-                    self.set_cell(cell)
+    def _hidden_single_solve(self, cells: Iterable[Cell] = None):
+        cell_list = self.cells_by_candidate(*cells, include_solved=False)
+        for i, _cells in enumerate(cell_list):
+            if _cells is None or len(_cells) != 1:
+                continue
+            candidate = i + 1
+            cell = _cells[0]
+            cell.equals(candidate)
+            self.set_cell(cell)
+            return True
+
+    def hidden_single_solve(self, cells: Optional[Iterable[Cell]] = None):
+        return self._orchestrate_transformation(self._hidden_single_solve)(cells=cells)
 
     @_transformation
     @_each_division
