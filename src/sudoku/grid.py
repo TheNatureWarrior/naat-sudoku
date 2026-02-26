@@ -118,7 +118,7 @@ class Grid:
                 try:
                     new_other = self.text_to_grid(other)
                     return self.__eq__(new_other)
-                except Exception:
+                except ValueError:
                     return NotImplemented
         else:
             if str(self) == str(other):
